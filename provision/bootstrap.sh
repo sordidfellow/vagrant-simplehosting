@@ -20,26 +20,26 @@ symfony2Archi() {
 	setfacl -R -m u:www-data:rwX -m u:vagrant:rwX /home/vagrant/.symfony2/cache /home/vagrant/.symfony2/logs
 	setfacl -dR -m u:www-data:rwX -m u:vagrant:rwX /home/vagrant/.symfony2/cache /home/vagrant/.symfony2/logs
 	rm -f "/etc/apache2/sites-available/default"
-	wget -q -O "/etc/apache2/sites-available/default" "https://raw.githubusercontent.com/CestanGroupeNumerique/vagrant-simplehosting/master/resources/symfony/symfony-vhost"
+	wget -q -O "/etc/apache2/sites-available/default" "https://raw.githubusercontent.com/sordidfellow/vagrant-simplehosting/master/resources/symfony/symfony-vhost"
 	if [ -f "/vagrant/app/AppKernel.php" ] && ! grep -q '.*/home/vagrant/.*' "/vagrant/app/AppKernel.php"
 	then
 		sed -i '$d' "/vagrant/app/AppKernel.php"
-		wget -q -O "/tmp/custom-kernel-code" "https://raw.githubusercontent.com/CestanGroupeNumerique/vagrant-simplehosting/master/resources/symfony/custom-kernel-code"
+		wget -q -O "/tmp/custom-kernel-code" "https://raw.githubusercontent.com/sordidfellow/vagrant-simplehosting/master/resources/symfony/custom-kernel-code"
 		cat "/tmp/custom-kernel-code" >> "/vagrant/app/AppKernel.php"		
 	fi
-	wget -q -O "/vagrant/web/app_dev.php" "https://raw.githubusercontent.com/CestanGroupeNumerique/vagrant-simplehosting/master/resources/symfony/app_dev.php"
+	wget -q -O "/vagrant/web/app_dev.php" "https://raw.githubusercontent.com/sordidfellow/vagrant-simplehosting/master/resources/symfony/app_dev.php"
 	chown vagrant:vagrant "/vagrant/web/app_dev.php"
-	wget -q -O "/vagrant/.gitignore" "https://raw.githubusercontent.com/CestanGroupeNumerique/vagrant-simplehosting/master/resources/symfony/gitignore"
+	wget -q -O "/vagrant/.gitignore" "https://raw.githubusercontent.com/sordidfellow/vagrant-simplehosting/master/resources/symfony/gitignore"
 	chown vagrant:vagrant "/vagrant/.gitignore"
 }
 
 defaultArchi() {
-	wget -q -O "/vagrant/.gitignore" "https://raw.githubusercontent.com/CestanGroupeNumerique/vagrant-simplehosting/master/resources/common/gitignore"
+	wget -q -O "/vagrant/.gitignore" "https://raw.githubusercontent.com/sordidfellow/vagrant-simplehosting/master/resources/common/gitignore"
 }
 
 echo " -- Installing sources.list... -- "
 rm -f "/etc/apt/sources.list"
-wget -q -O "/etc/apt/sources.list" "https://raw.githubusercontent.com/CestanGroupeNumerique/vagrant-simplehosting/master/resources/common/sources.list"
+wget -q -O "/etc/apt/sources.list" "https://raw.githubusercontent.com/sordidfellow/vagrant-simplehosting/master/resources/common/sources.list"
 
 echo " -- Updating System... -- "
 apt-get update
@@ -75,16 +75,16 @@ rm -rf /var/www
 ln -fs /vagrant /var/www
 
 echo " -- Installing bashrc... -- " 
-wget -q -O "/home/vagrant/.bashrc" "https://raw.githubusercontent.com/CestanGroupeNumerique/vagrant-simplehosting/master/resources/common/bashrc"
+wget -q -O "/home/vagrant/.bashrc" "https://raw.githubusercontent.com/sordidfellow/vagrant-simplehosting/master/resources/common/bashrc"
 chown vagrant:vagrant "/home/vagrant/.bashrc"
 echo " -- Installing zshrc... -- " 
-wget -q -O "/home/vagrant/.zshrc" "https://raw.githubusercontent.com/CestanGroupeNumerique/vagrant-simplehosting/master/resources/common/zshrc"
+wget -q -O "/home/vagrant/.zshrc" "https://raw.githubusercontent.com/sordidfellow/vagrant-simplehosting/master/resources/common/zshrc"
 chown vagrant:vagrant "/home/vagrant/.zshrc"
 echo " -- Installing emacs conf... -- " 
-wget -q -O "/home/vagrant/.emacs" "https://raw.githubusercontent.com/CestanGroupeNumerique/vagrant-simplehosting/master/resources/common/emacs"
+wget -q -O "/home/vagrant/.emacs" "https://raw.githubusercontent.com/sordidfellow/vagrant-simplehosting/master/resources/common/emacs"
 chown vagrant:vagrant "/home/vagrant/.emacs"
 echo " -- Installing php settings... -- " 
-wget -q -O "/etc/php5/mods-available/php-custom.ini" "https://raw.githubusercontent.com/CestanGroupeNumerique/vagrant-simplehosting/master/resources/common/php-custom.ini"
+wget -q -O "/etc/php5/mods-available/php-custom.ini" "https://raw.githubusercontent.com/sordidfellow/vagrant-simplehosting/master/resources/common/php-custom.ini"
 ln -s "/etc/php5/mods-available/php-custom.ini" /etc/php5/conf.d/php-custom.ini
 cp "/vagrant/Vagrantfile" "/vagrant/Vagrantfile.dist"
 chown vagrant:vagrant "/vagrant/Vagrantfile.dist"
