@@ -7,8 +7,6 @@ VAGRANTFILE_API_VERSION = "2"
 ###############################
 # General project settings
 # -----------------------------
-# This first one doesn't seem to exist...
-# box_name                = "chef/debian-7.4"
 box_name                = "mbman/debian-7"
 box_memory              = 2048
 box_cpus                = 1
