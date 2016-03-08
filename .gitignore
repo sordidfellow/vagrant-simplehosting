@@ -1,1 +1,4 @@
-/.vagrant/
+/.vagrant
+/Vagrantfile
+/share
+/www

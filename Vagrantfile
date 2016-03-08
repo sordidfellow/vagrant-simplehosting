@@ -7,17 +7,36 @@ VAGRANTFILE_API_VERSION = "2"
 ###############################
 # General project settings
 # -----------------------------
-box_name                = "chef/debian-7.4"
+# This first one doesn't seem to exist...
+# box_name                = "chef/debian-7.4"
+box_name                = "mbman/debian-7"
 box_memory              = 2048
 box_cpus                = 1
 box_cpu_max_exec_cap    = "100"
 
+# Hardcode VM client IP
 ip_address = "192.168.10.10"
 
-# Project type (available are: "auto", "symfony")
-architecture = "auto"
+# Hardcode Proxy settings
+proxy_ip = "10.0.2.2"
+proxy_port = "7890"
 
+
+# Plugins to setup the proxy stuff
+
+required_plugins = %w(vagrant-proxyconf)
 # -----------------------------
+
+plugins_to_install = required_plugins.select { |plugin| not Vagrant.has_plugin? plugin }
+if not plugins_to_install.empty?
+  puts "Installing plugins: #{plugins_to_install.join(' ')}"
+  if system "vagrant plugin install #{plugins_to_install.join(' ')}"
+    exec "vagrant #{ARGV.join(' ')}"
+  else
+    abort "Installation of one or more plugins has failed. Aborting."
+  end
+end
+
 ###############################
 
 Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
@@ -35,6 +54,9 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   # using a specific IP.
   config.vm.network "private_network", ip: ip_address
 
+  # We'll just connect to the guest IP directly on port 80
+  # config.vm.network "forwarded_port", guest:80, host:8080
+
   # Create a public network, which generally matched to bridged network.
   # Bridged networks make the machine appear as another physical device on
   # your network.
@@ -50,16 +72,20 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   # argument is a set of non-required options.
   # config.vm.synced_folder "../data", "/vagrant_data"
 
+  config.proxy.http     = "http://#{proxy_ip}:#{proxy_port}"
+  config.proxy.https    = "https://#{proxy_ip}:#{proxy_port}"
+  config.proxy.no_proxy = "localhost,127.0.0.1,#{proxy_ip}"
+
 
   # Provisioning
   config.vm.provision "shell" do |s|
-    s.path = "https://raw.githubusercontent.com/sordidfellow/vagrant-simplehosting/master/provision/bootstrap.sh"
-    s.args = architecture
+    s.path = "./provision/bootstrap.sh"
+    s.args = [proxy_ip, proxy_port, ip_address]
     s.privileged = true
   end
 
   config.vm.provision "shell", run: "always" do |s|
-    s.path = "https://raw.githubusercontent.com/sordidfellow/vagrant-simplehosting/master/provision/always.sh"
+    s.path = "./provision/always.sh"
     s.privileged = true
   end
 end

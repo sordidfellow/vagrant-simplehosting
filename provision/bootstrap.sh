@@ -1,62 +1,68 @@
 #!/usr/bin/env bash
 
-autoArchi() {
-	echo " -- Auto detect architecture... -- "
-	if [ -f "/vagrant/composer.json" ] && grep -q '.*"symfony/symfony".*' "/vagrant/composer.json"
-	then
-    	echo " -- Symfony2 detected... -- "
-		symfony2Archi
-	else
-		echo " -- Default archi... -- "
-		defaultArchi
-	fi
-}
+echo "===================================================================="
+echo "Starting bootstrap.sh, now named $0, called with arguments $*"
 
-symfony2Archi() {
-	echo " -- Installing Symfony2 architecture... -- "
-	DEBIAN_FRONTEND=noninteractive apt-get --yes --force-yes install acl
-	mkdir -p /home/vagrant/.symfony2/cache
-	mkdir -p /home/vagrant/.symfony2/logs
-	setfacl -R -m u:www-data:rwX -m u:vagrant:rwX /home/vagrant/.symfony2/cache /home/vagrant/.symfony2/logs
-	setfacl -dR -m u:www-data:rwX -m u:vagrant:rwX /home/vagrant/.symfony2/cache /home/vagrant/.symfony2/logs
-	rm -f "/etc/apache2/sites-available/default"
-	wget -q -O "/etc/apache2/sites-available/default" "https://raw.githubusercontent.com/sordidfellow/vagrant-simplehosting/master/resources/symfony/symfony-vhost"
-	if [ -f "/vagrant/app/AppKernel.php" ] && ! grep -q '.*/home/vagrant/.*' "/vagrant/app/AppKernel.php"
-	then
-		sed -i '$d' "/vagrant/app/AppKernel.php"
-		wget -q -O "/tmp/custom-kernel-code" "https://raw.githubusercontent.com/sordidfellow/vagrant-simplehosting/master/resources/symfony/custom-kernel-code"
-		cat "/tmp/custom-kernel-code" >> "/vagrant/app/AppKernel.php"		
-	fi
-	wget -q -O "/vagrant/web/app_dev.php" "https://raw.githubusercontent.com/sordidfellow/vagrant-simplehosting/master/resources/symfony/app_dev.php"
-	chown vagrant:vagrant "/vagrant/web/app_dev.php"
-	wget -q -O "/vagrant/.gitignore" "https://raw.githubusercontent.com/sordidfellow/vagrant-simplehosting/master/resources/symfony/gitignore"
-	chown vagrant:vagrant "/vagrant/.gitignore"
-}
+PROXY_IP=$1
+PROXY_PORT=$2
+LOCAL_IP=$3
 
-defaultArchi() {
-	wget -q -O "/vagrant/.gitignore" "https://raw.githubusercontent.com/sordidfellow/vagrant-simplehosting/master/resources/common/gitignore"
-}
+if [ "$2" != "" ]; then
+	# echo "SOCKS_SERVER=$PROXY_IP:$PROXY_PORT" >> /etc/profile.d/socksproxy.sh
+	echo "===================================================================="
+	echo "Proxy Settings:"
+	set | grep -i proxy | grep -v _= | sort -f
+	sleep 10
+	echo "===================================================================="
 
-echo " -- Installing sources.list... -- "
-rm -f "/etc/apt/sources.list"
-wget -q -O "/etc/apt/sources.list" "https://raw.githubusercontent.com/sordidfellow/vagrant-simplehosting/master/resources/common/sources.list"
+	# Add proxy to apt-get... requires fiddler chained to ssh
+	echo "Acquire::http::proxy \"$http_proxy\";" >> /etc/apt/apt.conf
+	echo "Acquire::https::proxy \"$https_proxy\";" >> /etc/apt/apt.conf
+	echo "===================================================================="
+	echo "Apt Proxy Settings"
+	cat /etc/apt/apt.conf || exit 1
+	sleep 5	
+fi
 
-echo " -- Updating System... -- "
-apt-get update
-DEBIAN_FRONTEND=noninteractive apt-get --yes --force-yes install debian-archive-keyring
-DEBIAN_FRONTEND=noninteractive apt-get --yes --force-yes upgrade
-DEBIAN_FRONTEND=noninteractive apt-get --yes --force-yes install debconf-utils
+echo "===================================================================="
+echo "Testing internet connectivity..."
+wget -q www.google.com > /dev/null
+if [ $? -gt 0 ]; then
+	echo "No internet access (wget returned error code $?).  Aborting bootstrap.sh"
+	exit 1
+fi
 
-echo " -- Installing requirements... -- "
-debconf-set-selections <<< 'mysql-server mysql-server/root_password password root'
-debconf-set-selections <<< 'mysql-server mysql-server/root_password_again password root'
+echo "Internet access is working.  Continuing bootstrap.sh ..."
 
-debconf-set-selections <<< 'phpmyadmin phpmyadmin/password-confirm password root'
-debconf-set-selections <<< 'phpmyadmin phpmyadmin/app-password-confirm password root'
-debconf-set-selections <<< 'phpmyadmin phpmyadmin/setup-password password root'
-debconf-set-selections <<< 'phpmyadmin phpmyadmin/mysql/admin-pass password root'
-debconf-set-selections <<< 'phpmyadmin phpmyadmin/mysql/app-pass password root'
-debconf-set-selections <<< 'phpmyadmin phpmyadmin/reconfigure-webserver multiselect apache2'
+
+#echo " -- Installing sources.list... -- "
+#rm -f "/etc/apt/sources.list"
+#cp "/vagrant/resources/common/sources.list" "/etc/apt/sources.list" 
+
+echo " > -- Updating System -- "
+apt-get update || (echo " !!!! Error calling apt-get update.  Aborting bootstrap process. !!!!" && exit 1)
+echo " > apt-get update -- finished"
+
+echo "===================================================================="
+echo "Running apt-get upgrade ... "
+DEBIAN_FRONTEND=noninteractive apt-get --yes --force-yes install debian-archive-keyring || exit 1
+DEBIAN_FRONTEND=noninteractive apt-get --yes --force-yes upgrade || exit 1
+DEBIAN_FRONTEND=noninteractive apt-get --yes --force-yes install debconf-utils || exit 1
+
+echo "===================================================================="
+echo " > Setting package installation configuration options "
+debconf-set-selections <<< 'mysql-server mysql-server/root_password password root' || exit 1
+debconf-set-selections <<< 'mysql-server mysql-server/root_password_again password root' || exit 1
+
+debconf-set-selections <<< 'phpmyadmin phpmyadmin/password-confirm password root' || exit 1
+debconf-set-selections <<< 'phpmyadmin phpmyadmin/app-password-confirm password root' || exit 1
+debconf-set-selections <<< 'phpmyadmin phpmyadmin/setup-password password root' || exit 1
+debconf-set-selections <<< 'phpmyadmin phpmyadmin/mysql/admin-pass password root' || exit 1
+debconf-set-selections <<< 'phpmyadmin phpmyadmin/mysql/app-pass password root' || exit 1
+debconf-set-selections <<< 'phpmyadmin phpmyadmin/reconfigure-webserver multiselect apache2' || exit 1
+
+echo "===================================================================="
+echo " > Installing packages "
 
 DEBIAN_FRONTEND=noninteractive apt-get --yes --force-yes install \
     zsh \
@@ -70,36 +76,43 @@ DEBIAN_FRONTEND=noninteractive apt-get --yes --force-yes install \
     git \
     vim \
     emacs \
-    screen
-rm -rf /var/www
-ln -fs /vagrant /var/www
+    screen \
+    dos2unix \
+    tsocks || exit 1
+rm -rf /var/www || exit 1
+ln -fs /vagrant/www /var/www || exit 1
+
+echo "===================================================================="
+echo " > Installing dotfiles and other local config "
 
 echo " -- Installing bashrc... -- " 
-wget -q -O "/home/vagrant/.bashrc" "https://raw.githubusercontent.com/sordidfellow/vagrant-simplehosting/master/resources/common/bashrc"
-chown vagrant:vagrant "/home/vagrant/.bashrc"
+cp "/vagrant/resources/common/bashrc" "/home/vagrant/.bashrc"  || exit 1
+chown vagrant:vagrant "/home/vagrant/.bashrc" || exit 1
+dos2unix "/home/vagrant/.bashrc" || exit 1
 echo " -- Installing zshrc... -- " 
-wget -q -O "/home/vagrant/.zshrc" "https://raw.githubusercontent.com/sordidfellow/vagrant-simplehosting/master/resources/common/zshrc"
-chown vagrant:vagrant "/home/vagrant/.zshrc"
+cp "/vagrant/resources/common/zshrc" "/home/vagrant/.zshrc"  || exit 1
+chown vagrant:vagrant "/home/vagrant/.zshrc" || exit 1
+dos2unix "/home/vagrant/.zshrc" || exit 1
 echo " -- Installing emacs conf... -- " 
-wget -q -O "/home/vagrant/.emacs" "https://raw.githubusercontent.com/sordidfellow/vagrant-simplehosting/master/resources/common/emacs"
-chown vagrant:vagrant "/home/vagrant/.emacs"
+cp "/vagrant/resources/common/emacs" "/home/vagrant/.emacs"  || exit 1
+chown vagrant:vagrant "/home/vagrant/.emacs" || exit 1
+dos2unix "/home/vagrant/.emacs" || exit 1
 echo " -- Installing php settings... -- " 
-wget -q -O "/etc/php5/mods-available/php-custom.ini" "https://raw.githubusercontent.com/sordidfellow/vagrant-simplehosting/master/resources/common/php-custom.ini"
-ln -s "/etc/php5/mods-available/php-custom.ini" /etc/php5/conf.d/php-custom.ini
-cp "/vagrant/Vagrantfile" "/vagrant/Vagrantfile.dist"
-chown vagrant:vagrant "/vagrant/Vagrantfile.dist"
+cp "/vagrant/resources/common/php-custom.ini" "/etc/php5/mods-available/php-custom.ini"  || exit 1
+dos2unix "/etc/php5/mods-available/php-custom.ini" || exit 1
+ln -s "/etc/php5/mods-available/php-custom.ini" "/etc/php5/conf.d/php-custom.ini" || exit 1
+cp "/vagrant/Vagrantfile" "/vagrant/Vagrantfile.dist" || exit 1
+chown vagrant:vagrant "/vagrant/Vagrantfile.dist" || exit 1
 
 echo " -- Enabling apache2 mod_rewrite... -- "
-a2enmod rewrite
+a2enmod rewrite || exit 1
 
-if [ "$1" = "auto" ]
-then
-	autoArchi
-elif [ "$1" = "symfony2" ]
-then
-	symfony2Archi
-fi
+cp "/vagrant/resources/common/gitignore" "/vagrant/.gitignore" || exit 1
 
 echo " -- Restarting apache2... -- "
-service apache2 restart
+service apache2 restart || exit 1
 
+guess_ip=`/sbin/ifconfig eth1 | grep 'inet addr' | awk -F: '{print $2}' | awk '{print $1}'`
+echo "View the apache instance by opening a browser to http://$LOCAL_IP"
+
+# The end!
